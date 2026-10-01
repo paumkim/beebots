@@ -1,6 +1,9 @@
 // The owner password: picked on the Setup page, stored only as a salted scrypt hash, and required for every write from
 // the public dashboard (joining or leaving the Hive). Wrong passwords are counted; too many and the gate locks for a
 // while, so it cannot be guessed from the page.
+//
+// clientAddr also lives here: it is the request-identity helper the rate limiters use. It is read per request, held in
+// memory for the length of one limiter window, never written to the database and never logged.
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { log } from "./log.js";
@@ -81,6 +84,12 @@ export class PasswordGate {
     }
     return "bad";
   }
+}
+
+/** The client's address as Caddy reports it (first X-Forwarded-For hop), else the socket address. Never logged, never stored. */
+export function clientAddr(xff: string | string[] | undefined, socketAddr: string | undefined): string {
+  const first = (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim();
+  return first || socketAddr || "unknown";
 }
 
 export function send(res: ServerResponse, status: number, body: unknown) {

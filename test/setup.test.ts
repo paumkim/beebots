@@ -48,6 +48,7 @@ async function boot(opts: { designs?: BeeDesign[] } = {}) {
     refDir: dir,
     okxApiBase: "https://okx.invalid",
     windowMin: 120,
+    hiveUrl: "",
     now: () => now,
     onSaved: () => saved++,
     checkJev: async (key) => (key === "good-jev-key" ? null : "Jev rejected that key."),
@@ -101,7 +102,8 @@ describe("setup", () => {
     const t = await boot();
     const s = (await (await fetch(`${t.base}/setup/status`)).json()) as Record<string, unknown>;
     expect(s).toMatchObject({ needed: true, timedOut: false });
-    expect(Object.keys(s).sort()).toEqual(["closesAt", "needed", "secure", "serverHasOpenAiKey", "styles", "timedOut"]);
+    expect(s).toMatchObject({ hiveEnabled: false }); // no HIVE_URL in this fixture, so the Hive is off
+    expect(Object.keys(s).sort()).toEqual(["closesAt", "hiveEnabled", "needed", "secure", "serverHasOpenAiKey", "styles", "timedOut"]);
   });
 
   it("refuses to save without all three risk statements", async () => {

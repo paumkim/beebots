@@ -1,5 +1,6 @@
 // Mirrors the engine's read-only /snapshot and SSE payloads. No account data exists in these shapes.
 import { BEE_MARK_URL } from "./BeeMark";
+import { safeImg } from "./safeUrl";
 
 /** The three bee slots. Names, taglines and portraits come from the engine's /profile (set on the Setup page). */
 export type BeeName = "bee1" | "bee2" | "bee3";
@@ -57,7 +58,6 @@ export interface Snapshot {
   jev: { spentTodayUsd: number; dailyCapUsd: number; capTripped: boolean; down: boolean };
   recon: { ok: boolean | null; detail: string; ts: number };
   market: { refreshedAt: number; universe: string[]; spreadBlocked: Array<{ coin: string; spreadBp: number }>; attention: "news" | "volume" };
-  visitors?: { total: number; watching: number };
   /** Set when a newer GitHub Release exists than the version this install runs. */
   update?: { current: string; latest: string } | null;
 }
@@ -152,7 +152,7 @@ export const BEE_META: Record<BeeName, BeeMeta> = {
 export interface Profile {
   setup: boolean;
   mode: "dry" | "demo" | "live";
-  links: { sponsor: string; code: string } | null;
+  links: { code: string } | null;
   /** img null: a Setup-made bee without its portrait (the dashboard shows the placeholder mark). */
   bees: Array<{ id: BeeName; name: string; tagline: string; style: string; styleLabel: string; rules?: string; coins?: string[]; img: string | null }>;
 }
@@ -172,16 +172,19 @@ export function applyProfile(p: Profile): void {
     m.styleLabel = b.styleLabel;
     m.rules = b.rules ?? "";
     m.coins = b.coins ?? [];
-    m.img = b.img ?? BEE_MARK_URL;
+    // An engine-supplied src is untrusted: anything that is not a same-origin path or the inline placeholder is dropped.
+    m.img = safeImg(b.img) ?? BEE_MARK_URL;
   }
 }
 
 /** Shown on Setup and in the dashboard's Hive dialog. */
 export const HIVE_DISCLAIMER =
-  "You're about to share your bees' names, styles and paper-trading results on the public leaderboard at beebots.tech. The board shows % gain/loss only. No keys, no exchange account details, no IP address. Paper trading only. Not financial advice. You can leave any time.";
+  "You're about to share your bees' names, styles and paper-trading results on a public leaderboard. The board shows % gain/loss only. No keys, no exchange account details, no IP address. Paper trading only. Not financial advice. You can leave any time.";
 
 /** The engine's GET /hive/status. No hive id, no key. */
 export interface HiveStatus {
+  /** false when HIVE_URL is blank: no board is configured, the button is hidden and nothing can be sent. */
+  enabled: boolean;
   joined: boolean;
   /** false in MODE=live: the Hive is paper only. */
   paper: boolean;

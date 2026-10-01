@@ -50,17 +50,36 @@ afterEach(() => {
   close = null;
 });
 
-function makeHive(opts: { mode?: "dry" | "demo" | "live"; responses?: Parameters<typeof mockFetch>[0]; dir?: string; db?: Db; hash?: string | null; portrait?: (slot: string) => string | null } = {}) {
+function makeHive(opts: { mode?: "dry" | "demo" | "live"; responses?: Parameters<typeof mockFetch>[0]; dir?: string; db?: Db; hash?: string | null; portrait?: (slot: string) => string | null; url?: string } = {}) {
   const dir = opts.dir ?? mkdtempSync(join(tmpdir(), "bees-hive-"));
   const db = opts.db ?? new Db(":memory:");
   const m = mockFetch(opts.responses ?? []);
   const path = join(dir, "hive.json");
-  const hive = new Hive({ path, url: "https://hive.test", mode: opts.mode ?? "dry", source: () => INPUT, db, fetch: m.f, portrait: opts.portrait, ownerPasswordHash: () => (opts.hash === undefined ? HASH : opts.hash) });
+  const hive = new Hive({ path, url: opts.url ?? "https://hive.test", mode: opts.mode ?? "dry", source: () => INPUT, db, fetch: m.f, portrait: opts.portrait, ownerPasswordHash: () => (opts.hash === undefined ? HASH : opts.hash) });
   hives.push(hive);
   return { hive, path, dir, db, calls: m.calls };
 }
 
 const readState = (path: string) => JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+
+describe("hive off switch", () => {
+  it("a blank HIVE_URL means no board: nothing is enabled, joining is refused, nothing is sent", () => {
+    const { hive, calls } = makeHive({ url: "" });
+    expect(hive.enabled).toBe(false);
+    expect(hive.joined).toBe(false);
+    expect(hive.status()).toMatchObject({ enabled: false, joined: false, board: "" });
+    expect(() => hive.join()).toThrow(/No leaderboard is configured/);
+    hive.start({ hive: true, createdAt: Date.now() + 1 });
+    expect(hive.joined).toBe(false);
+    return Promise.resolve().then(() => expect(calls).toHaveLength(0));
+  });
+
+  it("a set HIVE_URL turns it on", () => {
+    const { hive } = makeHive();
+    expect(hive.enabled).toBe(true);
+    expect(hive.status()).toMatchObject({ enabled: true, board: "https://hive.test" });
+  });
+});
 
 describe("hive report", () => {
   it("matches the contract: bees from the engine, every fill since the start, oldest first, qty in base units", () => {

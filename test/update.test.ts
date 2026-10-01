@@ -6,7 +6,7 @@ function fakeFetch(status: number, body: unknown): typeof fetch {
   return (async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } })) as typeof fetch;
 }
 
-const RELEASE = { tag_name: "v2026.10.02", html_url: "https://github.com/imikerussell/beebots/releases/tag/v2026.10.02", draft: false, prerelease: false };
+const RELEASE = { tag_name: "v2026.10.02", html_url: "https://github.com/paumkim/beebots/releases/tag/v2026.10.02", draft: false, prerelease: false };
 
 describe("update check", () => {
   it("compares dotted date versions numerically, with or without a v", () => {
@@ -18,7 +18,7 @@ describe("update check", () => {
   });
 
   it("reports a newer release", async () => {
-    const u = new UpdateCheck({ repo: "imikerussell/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, RELEASE) });
+    const u = new UpdateCheck({ repo: "paumkim/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, RELEASE) });
     await u.check();
     expect(u.status()).toEqual({ current: "2026.09.25", latest: "2026.10.02" });
   });
@@ -30,7 +30,7 @@ describe("update check", () => {
       ["2026.09.25", { ...RELEASE, prerelease: true }],
       ["2026.09.25", { ...RELEASE, draft: true }],
     ] as const) {
-      const u = new UpdateCheck({ repo: "imikerussell/beebots", current, enabled: true, fetch: fakeFetch(200, rel) });
+      const u = new UpdateCheck({ repo: "paumkim/beebots", current, enabled: true, fetch: fakeFetch(200, rel) });
       await u.check();
       expect(u.status()).toBeNull();
     }
@@ -43,20 +43,20 @@ describe("update check", () => {
       ["2026.09.25", true, fakeFetch(404, { message: "Not Found" })],
       ["2026.09.25", true, (async () => { throw new Error("offline"); }) as unknown as typeof fetch],
     ] as const) {
-      const u = new UpdateCheck({ repo: "imikerussell/beebots", current, enabled, fetch: f });
+      const u = new UpdateCheck({ repo: "paumkim/beebots", current, enabled, fetch: f });
       await u.check();
       expect(u.status()).toBeNull();
     }
   });
 
   it("ignores a tag that is not a version", async () => {
-    const u = new UpdateCheck({ repo: "imikerussell/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, { ...RELEASE, tag_name: "<script>" }) });
+    const u = new UpdateCheck({ repo: "paumkim/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, { ...RELEASE, tag_name: "<script>" }) });
     await u.check();
     expect(u.status()).toBeNull();
   });
 
   it("survives the response redaction the dashboard gets", async () => {
-    const u = new UpdateCheck({ repo: "imikerussell/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, RELEASE) });
+    const u = new UpdateCheck({ repo: "paumkim/beebots", current: "2026.09.25", enabled: true, fetch: fakeFetch(200, RELEASE) });
     await u.check();
     expect(redact({ update: u.status() })).toEqual({ update: u.status() });
   });

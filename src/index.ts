@@ -21,7 +21,6 @@ import { startServer } from "./server.js";
 import { loadSettings, STYLE_INFO } from "./settings.js";
 import { imagePath, Setup } from "./setup.js";
 import { UpdateCheck } from "./update.js";
-import { Visitors } from "./visitors.js";
 
 const SETTINGS_PATH = process.env.SETTINGS_PATH?.trim() || "./data/settings.json";
 // Reference portraits for generated bees: the dashboard's default art (copied into the image by the Dockerfile).
@@ -62,6 +61,7 @@ function runSetup() {
     openai: { apiKey: env.OPENAI_API_KEY?.trim() || undefined, textModel: env.OPENAI_TEXT_MODEL?.trim() || "gpt-5.4-nano", imageModel: env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-2" },
     refDir: REF_DIR,
     windowMin: Math.max(1, Number(env.SETUP_WINDOW_MIN) || 120),
+    hiveUrl: (env.HIVE_URL?.trim() ?? "").replace(/\/+$/, ""),
     okxApiBase: env.OKX_API_BASE?.trim().replace(/\/+$/, "") || "https://eea.okx.com",
     onSaved: () => {
       log.info("settings saved; exiting so Docker restarts the engine with them");
@@ -169,7 +169,7 @@ async function main() {
 
   const server = startServer(
     {
-      engine: { bus, db, visitors: new Visitors(db), snapshot: () => engine!.snapshot(), health: () => engine!.health(), update: () => updates.status() },
+      engine: { bus, db, snapshot: () => engine!.snapshot(), health: () => engine!.health(), update: () => updates.status() },
       hive,
       profile: () => profile(cfg),
       beeImage: (b) => (cfg.slots[b as keyof typeof cfg.slots]?.customImage ? imagePath(cfg.settingsPath, b) : null),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { money, signed } from "./BeeColumn";
 import { HiveButton } from "./Hive";
+import { safeHref } from "./safeUrl";
 import { PROFILE, type Snapshot } from "./types";
 
 function Clock() {
@@ -28,18 +29,20 @@ function Recon({ recon, mode }: { recon: Snapshot["recon"] | undefined; mode: Sn
 }
 
 /**
- * Official Hostinger mark: path from Simple Icons 16.32.0 (slug "hostinger", CC0 path data),
- * traced from Hostinger's media kit at https://www.hostinger.com/newsroom. Brand colour #673DE6.
- * Rendered white (single-colour treatment) because purple on this near-black header is too dim on camera.
+ * A link out to the source repository, when the operator has set REPO_LINK. Plain text, no vendor logo and no
+ * affiliate link: the fork has no commercial interest in where you host it.
  */
-function HostingerMark() {
+function CodeLink() {
+  const repo = safeHref(PROFILE.links?.code);
+  if (!repo) return null;
   return (
-    <svg className="host-mark" viewBox="0 0 24 24" role="img" aria-label="Hostinger">
-      <path
-        fill="currentColor"
-        d="M16.415 0v7.16l5.785 3.384V2.949L16.415 0ZM1.8 0v11.237h18.815L14.89 8.09l-7.457-.003V3.024L1.8 0Zm14.615 20.894v-5.019l-7.514-.005c.007.033-5.82-3.197-5.82-3.197l19.119.091V24l-5.785-3.106ZM1.8 13.551v7.343l5.633 2.949v-6.988L1.8 13.551Z"
-      />
-    </svg>
+    <a className="counter host" href={`${repo}/releases`} target="_blank" rel="noopener noreferrer">
+      <div className="eyebrow">Source</div>
+      <div className="host-row">
+        <span>beebots</span>
+      </div>
+      <div className="counter-sub">Fork it ↗</div>
+    </a>
   );
 }
 
@@ -69,8 +72,8 @@ export function Header({ snap, connected, stalled, soundOn, onSound }: { snap: S
         </div>
         <div className="brand-sub">
           <span className={`mode mode-${snap?.mode ?? "dry"}`}>{snap?.mode === "live" ? "● LIVE MONEY" : snap?.mode === "demo" ? "OKX DEMO" : "PAPER TRADING"}{snap?.closed ? (snap.closed.flat ? " · ENDED" : " · CLOSING") : ""}</span>
-          {snap?.update ? (
-            <a className="update-pill" href={`${PROFILE.links?.code ?? "https://github.com/imikerussell/beebots"}/releases/latest`} target="_blank" rel="noopener" title={`You run ${snap.update.current}. See what's new and how to update.`}>
+          {snap?.update && safeHref(`${PROFILE.links?.code ?? ""}/releases/latest`) ? (
+            <a className="update-pill" href={safeHref(`${PROFILE.links?.code ?? ""}/releases/latest`)!} target="_blank" rel="noopener noreferrer" title={`You run ${snap.update.current}. See what's new and how to update.`}>
               Update available: {snap.update.latest} ↗
             </a>
           ) : null}
@@ -90,15 +93,7 @@ export function Header({ snap, connected, stalled, soundOn, onSound }: { snap: S
           sub={jev ? `today ${money(jev.spentTodayUsd, 3)} of ${money(jev.dailyCapUsd, 0)} cap` : undefined}
         />
         <Counter label="Decisions" value={decisions.toLocaleString()} sub={jev?.down ? "Jev unreachable: holding" : jev?.capTripped ? "Jev cap hit: holding" : "every one recorded"} tone={jev?.down || jev?.capTripped ? "bad" : undefined} />
-        <Counter label="Visitors" value={snap?.visitors ? snap.visitors.total.toLocaleString() : "–"} sub={snap?.visitors ? `${snap.visitors.watching} watching now` : undefined} />
-        <a className="counter host" href={PROFILE.links?.sponsor ?? "https://mrc.fm/beebots"} target="_blank" rel="noopener">
-          <div className="eyebrow">Hosted on</div>
-          <div className="host-row">
-            <HostingerMark />
-            <span>Hostinger</span>
-          </div>
-          <div className="counter-sub">Host your own ↗</div>
-        </a>
+        <CodeLink />
       </div>
 
       <div className="top-right">

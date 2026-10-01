@@ -115,14 +115,15 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: opt,
   OPENAI_TEXT_MODEL: str("gpt-5.4-nano"),
   OPENAI_IMAGE_MODEL: str("gpt-image-2"),
-  // Optional links shown on the dashboard (the "Hosted on Hostinger" chip and the "Get the code" link).
-  HOST_LINK: str("https://mrc.fm/beebots"),
-  REPO_LINK: str("https://github.com/imikerussell/beebots"),
-  // The Hive: the public leaderboard that installs can join (paper only). Reports go to <HIVE_URL>/hive/report.
-  HIVE_URL: str("https://beebots.tech"),
-  // "Update available" on the dashboard: checks this repo's latest GitHub Release against APP_VERSION (set by the build).
-  UPDATE_CHECK: bool(true),
-  UPDATE_REPO: str("imikerussell/beebots"),
+  // Where the dashboard's "source code" link points.
+  REPO_LINK: str("https://github.com/paumkim/beebots"),
+  // The Hive: a public paper-trading leaderboard this install can report to. Off unless HIVE_URL is set: a blank
+  // HIVE_URL means there is no board, the Join button never appears and nothing is ever sent anywhere.
+  HIVE_URL: str(""),
+  // "Update available" on the dashboard: checks this repo's latest GitHub Release against APP_VERSION (set by the
+  // build). Off by default, so a fresh install makes no outbound request until the operator asks for one.
+  UPDATE_CHECK: bool(false),
+  UPDATE_REPO: str("paumkim/beebots"),
   APP_VERSION: str("dev"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional().default("info"),
   ALERT_WEBHOOK_URL: opt,
@@ -162,7 +163,8 @@ export interface Config {
   mode: Mode;
   slots: Record<BeeId, SlotProfile>;
   openai: { apiKey?: string; textModel: string; imageModel: string };
-  links: { sponsor: string; code: string };
+  links: { code: string };
+  /** url is "" when no leaderboard is configured, which turns the Hive off entirely. */
   hive: { url: string };
   update: { enabled: boolean; repo: string; version: string };
   settingsPath: string;
@@ -261,7 +263,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, settings: Setti
     mode,
     slots,
     openai: { apiKey: e.OPENAI_API_KEY ?? settings?.openaiKey, textModel: e.OPENAI_TEXT_MODEL, imageModel: e.OPENAI_IMAGE_MODEL },
-    links: { sponsor: e.HOST_LINK, code: e.REPO_LINK },
+    links: { code: e.REPO_LINK },
     hive: { url: e.HIVE_URL.replace(/\/+$/, "") },
     update: { enabled: e.UPDATE_CHECK, repo: e.UPDATE_REPO, version: e.APP_VERSION },
     settingsPath: e.SETTINGS_PATH,

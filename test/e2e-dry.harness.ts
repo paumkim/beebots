@@ -11,7 +11,6 @@ import { Jev, type SystemOne } from "../src/jev.js";
 import { MarketFeed } from "../src/market/data.js";
 import { createPublicApi } from "../src/okx/public.js";
 import { startServer } from "../src/server.js";
-import { Visitors } from "../src/visitors.js";
 
 const fakeJev: SystemOne = {
   async systemOne(req) {
@@ -33,5 +32,5 @@ const exec = new SimExecutor(() => feed.view(), cfg.risk.takerFeeRate);
 const jev = new Jev({ ...cfg.jev, client: fakeJev });
 const engine: Engine = new Engine({ cfg, db, feed, jev, exec, bus, alerts: new Alerts(undefined) });
 await engine.start();
-const server = startServer({ engine: { bus, db, visitors: new Visitors(db), snapshot: () => engine.snapshot(), health: () => engine.health() }, profile: () => ({ bees: [] }), beeImage: () => null }, cfg.server.port, cfg.server.bind);
+const server = startServer({ engine: { bus, db, snapshot: () => engine.snapshot(), health: () => engine.health() }, profile: () => ({ bees: [] }), beeImage: () => null }, cfg.server.port, cfg.server.bind);
 if (process.env.E2E_SECONDS) setTimeout(() => { engine.stop(); server.close(); db.close(); process.exit(0); }, Number(process.env.E2E_SECONDS) * 1000);

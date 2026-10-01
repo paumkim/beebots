@@ -12,7 +12,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { BEES } from "./config.js";
-import { hashPassword, MAX_PASSWORD, MIN_PASSWORD, readJson, send } from "./gate.js";
+import { hashPassword, MAX_PASSWORD, MIN_PASSWORD, clientAddr, readJson, send } from "./gate.js";
 import { checkJevKey } from "./jev.js";
 import { log } from "./log.js";
 import { BIZZY_BREAKOUT_COINS } from "./bees/bizzy.js";
@@ -21,7 +21,6 @@ import { deriveStyle } from "./bees/custom.js";
 import { fetchXperpCoins } from "./okx/public.js";
 import { checkOpenAiKey, designBee, OpenAiError, paintBee, type BeeDesign } from "./openai.js";
 import { safeError } from "./redact.js";
-import { clientAddr } from "./visitors.js";
 import { BeeSchema, isReservedName, saveSettings, STYLE_INFO, STYLES, type Settings } from "./settings.js";
 
 const MAX_PAINTS = 24;
@@ -43,6 +42,8 @@ export interface SetupOpts {
   okxApiBase: string;
   /** Minutes after the engine starts that Setup stays open (SETUP_WINDOW_MIN). */
   windowMin: number;
+  /** HIVE_URL with no trailing slash, or "" when no leaderboard is configured. The Hive step only shows when it is set. */
+  hiveUrl: string;
   now?: () => number;
   /** Injectable for tests; defaults to one real Jev call. */
   checkJev?: (key: string, model: string) => Promise<string | null>;
@@ -57,7 +58,7 @@ export interface SetupOpts {
 export class DesignError extends Error {}
 
 export const TIMED_OUT =
-  "Setup timed out to keep this server safe. Restart the engine container (Hostinger Docker Manager → Restart, or `docker compose restart engine`) to open it again.";
+  "Setup timed out to keep this server safe. Restart the engine container (`docker compose restart engine`) to open it again.";
 
 const reservedMsg = (name: string) =>
   `"${name}" belongs to one of the official bees (${STYLES.map((s) => STYLE_INFO[s].name).join(", ")}). Pick another name.`;
@@ -182,6 +183,8 @@ export class Setup {
       closesAt: this.closesAt,
       secure: req.headers["x-forwarded-proto"] === "https",
       serverHasOpenAiKey: !!this.o.openai.apiKey,
+      /** A leaderboard is configured, so the Hive step is worth showing. False means the Hive is off. */
+      hiveEnabled: this.o.hiveUrl.length > 0,
       styles: STYLES.map((id) => ({ id, ...STYLE_INFO[id] })),
     };
   }

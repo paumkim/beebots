@@ -16,14 +16,21 @@ account unless you change the settings yourself, on purpose.
 > put in. The software comes with no warranty (see [LICENSE](LICENSE)). If you ever switch it to real money, that
 > is your decision and your risk.
 
-## Run your own in one click
+**This is a fork.** The trading engine and risk layer are unmodified. Advertising, reader counting, the font CDN and
+the default phone-home have been removed, and owner-supplied text is sanitized before it reaches the model. Read
+[SECURITY.md](SECURITY.md) for what changed and what is still worth knowing.
 
-[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=202403&url=https%3A%2F%2Fwww.hostinger.com%2Fdocker-hosting%3Fcompose_url%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fimikerussell%2Fbeebots%2Fmain%2Fdocker-compose.yml%26utm_medium%3Daffiliate%26utm_source%3Daff%7Baffiliate_id%7D%26utm_campaign%3D%7Boffer_id%7D%26session%3D%7Btransaction_id%7D)
+## Run it
 
-Use code **MAGIC10** at checkout for 10% off.
+You need a machine with Docker: any VPS, a home box, a NAS. Two CPU and 4 GB of RAM is comfortable.
 
-1. Click the button, pick a VPS plan (a **KVM 2** is plenty) and check out. Hostinger sets up Docker and starts
-   beebots for you.
+1. Copy `docker-compose.yml` onto the server and start it:
+
+   ```sh
+   curl -fsSLO https://raw.githubusercontent.com/paumkim/beebots/main/docker-compose.yml
+   docker compose up -d
+   ```
+
 2. Open your server's IP address in a browser. You'll see the **Setup** page. Do this soon: Setup stays open for
    2 hours after the server starts (see [Setup safety](#setup-safety)).
 3. On Setup:
@@ -36,7 +43,7 @@ Use code **MAGIC10** at checkout for 10% off.
      that only ever trades TRUMP", "a sleepy bee that only buys bitcoin dips"), press **Create my bee**, and OpenAI
      invents its name, tagline, trading rules and the coins it may trade. Rename it if you like, then press
      **Generate your bee's portrait**. You can carry on once all three bees have their portraits.
-   - choose whether to join **the Hive** (see below). "Not now" is fine; you can join later.
+   - if you set `HIVE_URL`, choose whether to join **the Hive** (see below). Otherwise the step is skipped.
 4. Press **Start paper trading**. The engine restarts, and the dashboard goes live.
 
 | Agree to the rules | Pick an owner password | Design your bees |
@@ -49,8 +56,8 @@ Setup has no code to find: the page is open to whoever reaches the server first.
 
 - **First come, first served.** Once you press Start, Setup closes for good. Nobody else can change your keys or bees.
 - **A setup window.** If nobody finishes Setup within 2 hours of the engine starting (`SETUP_WINDOW_MIN`, default
-  120), it locks, and the page says so. Restart the engine to open it again: Hostinger **Docker Manager** → the
-  `beebots` project → **Restart** on the `engine` container, or `docker compose restart engine`.
+  120), it locks, and the page says so. Restart the engine to open it again: `docker compose restart engine` (or your host's
+  container panel, if that is how you started it).
 - **Caps** on the calls that cost money (designs and portraits), in total and per visitor.
 
 Set up right after deploying, and use a domain with HTTPS if you can (`PUBLIC_DOMAIN`, below) so your keys don't
@@ -60,26 +67,15 @@ Each bee gets its own portrait, painted in the same style as the originals:
 
 <img src="docs/screenshots/generated-bee.jpg" alt="A generated bee portrait" width="256">
 
-**Copy a winning bee.** Every bee on [beebots.tech](https://beebots.tech) shows its rules with a **Copy** button. Copy
-a winner's rules and paste them into **How do you want this bee to trade?** to start from its playbook.
-
 Each bee starts with $333 of paper money. Jev spending is capped at $2 a day by default.
-
-### Already have a server?
-
-Any machine with Docker works:
-
-```sh
-curl -fsSLO https://raw.githubusercontent.com/imikerussell/beebots/main/docker-compose.yml
-docker compose up -d
-```
-
-Then open `http://<your-server-ip>/`.
 
 ### Updating
 
-New versions are published as [releases](https://github.com/imikerussell/beebots/releases). When one is out, your
-dashboard shows **Update available** next to the trading mode, linking to what's new. Nothing updates by itself.
+New versions are published as [releases](https://github.com/paumkim/beebots/releases).
+
+The dashboard's **Update available** pill is off by default (`UPDATE_CHECK=false`): an install makes no outbound
+request until you set it to `true`. When you do, it compares this repo's latest release tag with the version in your
+image every six hours. It is read-only, it never installs anything, and it does not send any trading data.
 
 To update, pull the new images and restart. Your bees, settings and history live in Docker volumes and are kept:
 
@@ -88,15 +84,17 @@ docker compose pull
 docker compose up -d
 ```
 
-Run it over SSH (or hPanel's browser terminal on Hostinger) in the folder that holds your `docker-compose.yml`
-(`docker compose ls` shows where it is). To turn the check off, set `UPDATE_CHECK=false`.
+Run it over SSH in the folder that holds your `docker-compose.yml` (`docker compose ls` shows where it is).
 
-## The Hive
+## The Hive (off by default)
 
-The Hive is a public leaderboard at [beebots.tech](https://beebots.tech) where everyone's bees race each other. It is
-**opt-in**: nothing is sent unless you join. What you agree to when you join:
+The Hive is an optional public leaderboard where everyone's bees race each other. It is **off**: `HIVE_URL` is blank,
+so there is no board, the Join button never appears, and no report ever leaves your server. Set `HIVE_URL` to a board
+and tick Join on Setup to turn it on.
 
-> You're about to share your bees' names, styles and paper-trading results on the public leaderboard at beebots.tech. The board shows % gain/loss only. No keys, no exchange account details, no IP address. Paper trading only. Not financial advice. You can leave any time.
+What you agree to when you join:
+
+> You're about to share your bees' names, styles and paper-trading results on a public leaderboard. The board shows % gain/loss only. No keys, no exchange account details, no IP address. Paper trading only. Not financial advice. You can leave any time.
 
 - **What is shared:** your bees' names, taglines and styles, their trade counts, their paper equity and funding, and
   each paper fill (coin, side, size, price, time, fee). The board shows the % gain or loss, not dollars; the equity and fills are
@@ -134,8 +132,7 @@ doesn't, the bee just waits until it does.
 | **Trend** | Breezy, the calculated one | Trend following on BTC and ETH only. Few trades, rides winners, sized by volatility. |
 | **Momentum** | Boozy, the degen | Chases the strongest 7-day mover across every liquid coin, and adds to winners. |
 
-Bizzy, Breezy and Boozy are the official bees (they run on [beebots.tech](https://beebots.tech)), so their names and art
-are theirs; your bees get their own. Two of your bees can share a style. The full rules are in [`strategies/`](strategies/), and the rules every bee
+Bizzy, Breezy and Boozy are the official bees, so their names and art are theirs; your bees get their own. Two of your bees can share a style. The full rules are in [`strategies/`](strategies/), and the rules every bee
 shares (caps, stops, "never flat for long") are in [`strategies/DRAMA_RULES.md`](strategies/DRAMA_RULES.md).
 
 ## How a decision is made
@@ -155,7 +152,7 @@ Jev is stateless and never sees an order endpoint. If Jev is down or slow, the b
 ## Settings
 
 Most people need none: Setup covers the keys. To change anything else, create a `.env` next to
-`docker-compose.yml` (or set the variables in Hostinger Docker Manager) and restart. Every setting is documented
+`docker-compose.yml` (or set them in whatever runs your containers) and restart. Every setting is documented
 in [`.env.example`](.env.example). The common ones:
 
 | setting | default | what it does |
@@ -172,15 +169,14 @@ docker compose exec engine rm /data/settings.json
 docker compose restart engine
 ```
 
-Run these on the server (on Hostinger, over SSH from hPanel), then open the site and go through Setup again. The
+Run these on the server, then open the site and go through Setup again. The
 setup window starts over with the restart.
 
 **Owner password:** it's stored only as a salted hash in `/data/settings.json`, so nobody (including you) can read it
 back. If you forget it, run Setup again as above. Installs from before the owner password existed can set
 `OWNER_PASSWORD` in `.env` (8+ characters) instead.
 
-**Something wrong?** The engine's log says what it's doing: `docker compose logs engine`, or Hostinger Docker
-Manager → the `engine` container's logs.
+**Something wrong?** The engine's log says what it's doing: `docker compose logs engine`.
 
 **Backups:** a sidecar writes a nightly copy of each database to `/data/backups` inside the `bees-data` volume and
 keeps 7 days. That copy lives on the same server, so take an off-server copy yourself if you care about the history.
@@ -233,6 +229,6 @@ logger and the event stream redact anything that looks like a key, an IP address
 ## Credits
 
 Built by Mike on the Creator Magic YouTube channel, in the video "I gave three AI bees $1,000".
-Hosted on [Hostinger](https://www.hostg.xyz/aff_c?offer_id=815&aff_id=202403&url=https%3A%2F%2Fwww.hostinger.com%2Fdocker-hosting%3Fcompose_url%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fimikerussell%2Fbeebots%2Fmain%2Fdocker-compose.yml%26utm_medium%3Daffiliate%26utm_source%3Daff%7Baffiliate_id%7D%26utm_campaign%3D%7Boffer_id%7D%26session%3D%7Btransaction_id%7D). Decisions by [Jev](https://typesafe.ai).
+Decisions by [Jev](https://typesafe.ai). Trading on OKX via [their Agent Trade Kit](https://github.com/okx/agent-trade-kit).
 
 MIT licence. No warranty. Not financial advice.

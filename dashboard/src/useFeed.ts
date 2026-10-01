@@ -123,8 +123,7 @@ export function useFeed(soundOn: boolean): FeedState {
     const loadSnap = () => getJson<Snapshot>("/snapshot").then((snap) => alive && dispatch({ t: "snap", snap })).catch(() => {});
     const loadCurves = () => getJson<Partial<Record<BeeName, Curve>>>("/equity?days=30").then((curves) => alive && dispatch({ t: "curves", curves })).catch(() => {});
 
-    // Hit counter: one call per page load; the engine dedupes per visitor per day and stores no IPs.
-    getJson<{ total: number; watching: number }>("/visit").then(() => loadSnap()).catch(() => {});
+    // No hit counter, no fingerprint, no analytics call on page load: /snapshot is the first request this page makes.
     void loadSnap();
     void loadCurves();
     getJson<AnyEvent[]>("/history?n=400").then((events) => alive && dispatch({ t: "history", events })).catch(() => {});

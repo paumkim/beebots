@@ -7,12 +7,12 @@
 #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 #
 # Settings: most people need none (Setup asks for your keys). Anything below can be set in a .env file next to this
-# one, or in Hostinger Docker Manager's environment variables. See .env.example for the full list.
+# one, or in whatever runs your containers. See .env.example for the full list.
 name: beebots
 
 services:
   engine:
-    image: ghcr.io/imikerussell/beebots-engine:latest
+    image: ghcr.io/paumkim/beebots-engine:latest
     restart: always
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -39,9 +39,11 @@ services:
       # Join/Leave the Hive. At least 8 characters.
       OWNER_PASSWORD: ${OWNER_PASSWORD:-}
       # "Update available" on the dashboard when a newer release is out (checks GitHub; never installs anything).
-      UPDATE_CHECK: ${UPDATE_CHECK:-true}
-      # The Hive, the public paper-trading leaderboard. Only used if you join (Setup or the dashboard).
-      HIVE_URL: ${HIVE_URL:-https://beebots.tech}
+      # Off by default: a fresh install makes no outbound request until you set this to true.
+      UPDATE_CHECK: ${UPDATE_CHECK:-false}
+      # The Hive: a public paper-trading leaderboard. Blank means there is no board, the Join button never
+      # appears and nothing is ever sent. Set it to a URL to opt in.
+      HIVE_URL: ${HIVE_URL:-}
       # Per-bee OKX keys, for demo or live only (letters: BEE1, BEE2, BEE3).
       BEE1_OKX_DEMO_API_KEY: ${BEE1_OKX_DEMO_API_KEY:-}
       BEE1_OKX_DEMO_API_SECRET: ${BEE1_OKX_DEMO_API_SECRET:-}
@@ -75,7 +77,7 @@ services:
       options: { max-size: "20m", max-file: "5" }
 
   web:
-    image: ghcr.io/imikerussell/beebots-web:latest
+    image: ghcr.io/paumkim/beebots-web:latest
     restart: always
     depends_on: [engine]
     # Non-root Caddy with every capability dropped; the namespaced sysctl lets it bind 80/443.
@@ -100,7 +102,7 @@ services:
 
   # Nightly consistent SQLite backup into the same volume (/data/backups); keeps 7 days.
   backup:
-    image: ghcr.io/imikerussell/beebots-backup:latest
+    image: ghcr.io/paumkim/beebots-backup:latest
     restart: always
     depends_on: [engine]
     security_opt: [no-new-privileges:true]

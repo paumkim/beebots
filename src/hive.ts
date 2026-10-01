@@ -1,9 +1,12 @@
-// The Hive: an opt-in public leaderboard at beebots.tech (HIVE_URL). A joined install reports its bees (name, style,
-// tagline, trading rules and coins, equity, funding, trade count) and every fill since the experiment started, every 5 minutes. The server checks each
-// fill against OKX's public candles and replays the books, so a bee's badge means its numbers add up.
+// The Hive: a public paper-trading leaderboard (HIVE_URL). A joined install reports its bees (name, style, tagline,
+// trading rules and coins, equity, funding, trade count) and every fill since the experiment started, every 5 minutes.
+// The server checks each fill against OKX's public candles and replays the books, so a bee's badge means its numbers add up.
 // Paper only: the reporter refuses to run in MODE=live, and the server rejects live reports too.
-// What is sent: the report below and nothing else. Paper results only (the board shows % gain/loss); no OKX, Jev or
-// OpenAI keys, no exchange account details, no IP addresses or paths. The only secret is the hive key, a random value made on join that proves later
+//
+// Off by default. HIVE_URL="" means there is no board: `enabled` is false, the dashboard shows no Join button, /hive/join
+// refuses, and nothing is ever sent. Set HIVE_URL to turn it back on.
+// What is sent when it is on: the report below and nothing else. Paper results only; no OKX, Jev or OpenAI keys, no exchange
+// account details, no IP addresses or paths. The only secret is the hive key, a random value made on join that proves later
 // reports (and a leave) come from the same install.
 // Joining and leaving are writes from a public page, so they need the owner password picked on Setup.
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -153,7 +156,12 @@ export class Hive {
   }
 
   get joined(): boolean {
-    return !!this.state?.joined;
+    return this.enabled && !!this.state?.joined;
+  }
+
+  /** HIVE_URL is set: there is a board to report to. Blank means the Hive is off. */
+  get enabled(): boolean {
+    return this.o.url.length > 0;
   }
 
   private get paper(): boolean {
@@ -166,6 +174,7 @@ export class Hive {
    */
   start(setup: { hive?: boolean; createdAt: number } | null = null): void {
     this.stopped = false;
+    if (!this.enabled) return;
     if (setup?.hive !== undefined) {
       const decidedAt = (this.state?.joined ? this.state.joinedAt : this.state?.leftAt) ?? 0;
       if (decidedAt < setup.createdAt) {
@@ -196,6 +205,7 @@ export class Hive {
 
   /** New hive id and key. The first report registers them with the server. */
   join(): void {
+    if (!this.enabled) throw new Error("No leaderboard is configured on this server.");
     if (!this.paper) throw new Error("The Hive is for paper trading only.");
     if (this.joined) return;
     this.state = { joined: true, hiveId: randomUUID(), key: randomBytes(32).toString("hex"), joinedAt: this.now() };
@@ -370,6 +380,7 @@ export class Hive {
   /** Public: no hive id, no key. */
   status() {
     return {
+      enabled: this.enabled,
       joined: this.joined,
       paper: this.paper,
       board: this.o.url,
@@ -392,6 +403,10 @@ export class Hive {
     if (path !== "/hive/join" && path !== "/hive/leave") return false;
     if (req.method !== "POST") {
       send(res, 405, { error: "method not allowed" });
+      return true;
+    }
+    if (!this.enabled) {
+      send(res, 409, { error: "No leaderboard is configured on this server. Set HIVE_URL and restart the engine to turn the Hive on." });
       return true;
     }
     const gate = this.gate.check(req);

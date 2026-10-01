@@ -20,6 +20,8 @@ interface Status {
   closesAt: number;
   secure: boolean;
   serverHasOpenAiKey: boolean;
+  /** A leaderboard is configured (HIVE_URL set). False: the Hive step is skipped entirely. */
+  hiveEnabled?: boolean;
   styles: StyleInfo[];
 }
 interface Design {
@@ -65,7 +67,16 @@ const nameProblem = (name: string): string | null =>
       ? "Bizzy, Breezy and Boozy are the official bees. Pick another name."
       : null;
 
-const STEPS = ["The rules", "Password", "Jev", "OpenAI", "Your bees", "The Hive", "Start"] as const;
+const ALL_STEPS = ["The rules", "Password", "Jev", "OpenAI", "Your bees", "The Hive", "Start"] as const;
+/** Index of the Hive step in ALL_STEPS. Dropped from the rail when no leaderboard is configured. */
+const HIVE_STEP = 5;
+const START_STEP = 6;
+
+/** The steps to show, and where each one sits in that shorter list. */
+function rail(hiveEnabled: boolean): { labels: readonly string[]; at: number[] } {
+  const keep = ALL_STEPS.map((s, i) => ({ s, i })).filter(({ i }) => hiveEnabled || i !== HIVE_STEP);
+  return { labels: keep.map(({ s }) => s), at: keep.map(({ i }) => i) };
+}
 
 class TimedOut extends Error {}
 
@@ -124,6 +135,13 @@ export function Setup() {
 
   const hasOpenAi = openaiOk || !!status?.serverHasOpenAiKey;
   const oaBody = openaiKey ? { openaiKey } : {};
+  /** The Hive step exists only when the operator configured a leaderboard (HIVE_URL). */
+  const hiveStep = !!status?.hiveEnabled;
+  const { labels: steps, at } = rail(hiveStep);
+  const stepPos = at.indexOf(step);
+  // Forward from "Your bees" skips the Hive step when there is no board; back from "Start" returns to "Your bees".
+  const afterBees = hiveStep ? HIVE_STEP : START_STEP;
+  const beforeStart = hiveStep ? HIVE_STEP : HIVE_STEP - 1;
 
   /** The message for an error; a timed-out Setup switches the whole page to the restart hint. */
   const fail = (e: unknown) => {
@@ -209,8 +227,7 @@ export function Setup() {
         <div className="setup-card center">
           <h1>Setup timed out</h1>
           <p>
-            Setup timed out to keep this server safe. Restart the engine container (Hostinger <b>Docker Manager</b> → <b>Restart</b>, or{" "}
-            <code>docker compose restart engine</code>) to open it again.
+            Setup timed out to keep this server safe. Restart the engine container (<code>docker compose restart engine</code>) to open it again.
           </p>
         </div>
       </div>
@@ -237,8 +254,8 @@ export function Setup() {
         <div className="setup-head">
           <h1>beebots setup</h1>
           <ol className="setup-steps">
-            {STEPS.map((s, i) => (
-              <li key={s} className={i === step ? "on" : i < step ? "done" : ""}>
+            {steps.map((s, i) => (
+              <li key={s} className={i === stepPos ? "on" : i < stepPos ? "done" : ""}>
                 {s}
               </li>
             ))}
@@ -391,11 +408,7 @@ export function Setup() {
             <h2>Design your bees</h2>
             <p>
               Three bees trade side by side and race each other. For each one, say how you want it to trade. OpenAI turns that into a name, a set of
-              rules and the coins it may trade, then you paint its portrait. Copied a winning bee's rules from{" "}
-              <a href="https://beebots.tech" target="_blank" rel="noopener">
-                beebots.tech
-              </a>
-              ? Paste them in.
+              rules and the coins it may trade, then you paint its portrait.
             </p>
             <div className="setup-bees">
               {bees.map((b, i) => {
@@ -449,22 +462,18 @@ export function Setup() {
               <button className="ghost" onClick={() => setStep(3)}>
                 Back
               </button>
-              <button disabled={!beesReady || anyBusy} onClick={() => setStep(5)}>
+              <button disabled={!beesReady || anyBusy} onClick={() => setStep(afterBees)}>
                 Next
               </button>
             </div>
           </section>
         )}
 
-        {step === 5 && (
+        {step === 5 && status?.hiveEnabled && (
           <section>
             <h2>Join the Hive?</h2>
             <p>
-              The Hive is a public leaderboard of everyone's bees at{" "}
-              <a href="https://beebots.tech" target="_blank" rel="noopener">
-                beebots.tech
-              </a>
-              . Your bees race everyone else's, and each fill is checked against OKX's public prices.
+              The Hive is a public leaderboard of everyone's bees. Your bees race everyone else's, and each fill is checked against OKX's public prices.
             </p>
             <div className="setup-hive">{HIVE_DISCLAIMER}</div>
             <div className="setup-actions">
@@ -498,13 +507,11 @@ export function Setup() {
               Each bee starts with <b>$333 of paper money</b>, and trades OKX perpetuals at real prices. The engine saves your settings, restarts, and opens
               the live dashboard. The setup page then closes for good. To run it again later, see the README.
             </p>
-            <p>
-              {hive
-                ? "Your bees join the Hive when the engine starts. You can leave any time from the dashboard."
-                : "Your bees stay off the Hive. You can join later from the dashboard."}
-            </p>
+            {hiveStep && (
+              <p>{hive ? "Your bees join the Hive when the engine starts. You can leave any time from the dashboard." : "Your bees stay off the Hive. You can join later from the dashboard."}</p>
+            )}
             <div className="setup-actions">
-              <button className="ghost" onClick={() => setStep(5)}>
+              <button className="ghost" onClick={() => setStep(beforeStart)}>
                 Back
               </button>
               <button disabled={busy} onClick={() => void save()}>

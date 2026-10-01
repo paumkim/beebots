@@ -1,16 +1,16 @@
-// Read-only HTTP: GET /events (SSE), /snapshot, /history?n=, /equity?days=, /visit, /health, /profile, /bee-image/<bee>.
+// Read-only HTTP: GET /events (SSE), /snapshot, /history?n=, /equity?days=, /health, /profile, /bee-image/<bee>.
 // Never config or keys. The exceptions: /setup/*, which only exists before first-run Setup is done (setup.ts), and
 // POST /hive/join and /hive/leave, which need the owner password (gate.ts, hive.ts). GET /hive/status is public and holds no key.
-// /visit is the page's hit counter: it bumps a total and returns it (see visitors.ts; no IP is stored or logged).
+// There is no visitor counter and no analytics endpoint: nothing here counts or fingerprints a reader.
 import { createReadStream } from "node:fs";
 import { createServer, type Server, type ServerResponse } from "node:http";
 import type { Db } from "./db.js";
 import type { EventBus } from "./events.js";
+import { clientAddr } from "./gate.js";
 import type { Hive } from "./hive.js";
 import { log } from "./log.js";
 import { redact } from "./redact.js";
 import type { Setup } from "./setup.js";
-import { clientAddr, type Visitors } from "./visitors.js";
 
 export interface ServerDeps {
   /** Absent in setup mode (nothing is trading yet). */
@@ -19,7 +19,6 @@ export interface ServerDeps {
     db: Db;
     snapshot: () => unknown;
     health: () => { ok: boolean; [k: string]: unknown };
-    visitors: Visitors;
     /** "Update available" (update.ts): null unless a newer GitHub Release exists. */
     update?: () => unknown;
   };
@@ -90,11 +89,7 @@ export function startServer(deps: ServerDeps, port: number, bind: string): Serve
         return json(res, h.ok ? 200 : 503, h);
       }
       case "/snapshot":
-        return json(res, 200, { ...(e.snapshot() as object), visitors: { total: e.visitors.total, watching: e.bus.subscribers }, update: e.update?.() ?? null });
-      case "/visit": {
-        const total = e.visitors.visit(clientAddr(req.headers["x-forwarded-for"], req.socket.remoteAddress));
-        return json(res, 200, { total, watching: e.bus.subscribers });
-      }
+        return json(res, 200, { ...(e.snapshot() as object), update: e.update?.() ?? null });
       case "/equity": {
         const days = Math.max(0.01, Math.min(60, Number(url.searchParams.get("days") ?? 30) || 30));
         return json(res, 200, e.db.equitySeries(Date.now() - days * 86_400_000, 720));

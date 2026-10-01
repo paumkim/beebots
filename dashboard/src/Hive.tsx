@@ -1,7 +1,9 @@
-// "Join the Hive" in the header: the public leaderboard at beebots.tech. Status comes from this install's own engine
-// (GET /hive/status, never the leaderboard itself), so the dashboard is the same whether or not the Hive is reachable.
+// "Join the Hive" in the header: a public paper-trading leaderboard, only when the operator has set HIVE_URL. Status comes
+// from this install's own engine (GET /hive/status, never the leaderboard itself), so the dashboard is the same whether or
+// not a board is reachable. With HIVE_URL blank the engine reports enabled: false and this button never renders.
 // Joining and leaving carry the owner password picked on Setup.
 import { useCallback, useEffect, useState } from "react";
+import { safeHref } from "./safeUrl";
 import { BEE_META, BEE_NAMES, HIVE_DISCLAIMER, type HiveStatus } from "./types";
 
 function ago(ts: number): string {
@@ -15,7 +17,7 @@ function boardHost(url: string): string {
   try {
     return new URL(url).host;
   } catch {
-    return "beebots.tech";
+    return "the leaderboard";
   }
 }
 
@@ -48,7 +50,7 @@ function HiveDialog({ status, onClose, onStatus }: { status: HiveStatus; onClose
     }
   };
 
-  const board = status.board || "https://beebots.tech";
+  const board = safeHref(status.board);
   const passwordOk = password.length >= 8;
   return (
     <div className="modal-back" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -107,9 +109,11 @@ function HiveDialog({ status, onClose, onStatus }: { status: HiveStatus; onClose
         {note && <p className="good">{note}</p>}
 
         <div className="modal-actions">
-          <a href={board} target="_blank" rel="noopener">
-            See the hive on {boardHost(board)} ↗
-          </a>
+          {board && (
+            <a href={board} target="_blank" rel="noopener noreferrer">
+              See the hive on {boardHost(board)} ↗
+            </a>
+          )}
           {status.joined ? (
             <button className="danger" disabled={busy || !passwordOk || !status.passwordSet} onClick={() => void act("leave")}>
               {busy ? "Leaving…" : "Leave"}
@@ -143,8 +147,8 @@ export function HiveButton() {
     return () => clearInterval(t);
   }, [load, open]);
 
-  // No engine answer (older engine, or still starting): no button, nothing else changes.
-  if (!status) return null;
+  // No engine answer (older engine, or still starting): no button, nothing else changes. No board configured: same.
+  if (!status || !status.enabled) return null;
   return (
     <>
       <button className={`hive-btn ${status.joined ? "in" : ""}`} onClick={() => setOpen(true)}>
